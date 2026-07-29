@@ -19,6 +19,7 @@ dependencies = [
     "langfuse>=2.53",
     "numpy>=2.1",
     "pypdf>=5.1",
+    "voyageai>=0.3",
 ]
 
 [dependency-groups]
