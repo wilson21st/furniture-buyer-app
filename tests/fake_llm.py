@@ -42,6 +42,4 @@ def text(msg: str, usage: Any = None) -> FakeResponse:
 
 
 def tool(block_id: str, name: str, tool_input: dict) -> FakeResponse:
-    return FakeResponse(
-        [ToolUseBlock(block_id, name, tool_input)], stop_reason="tool_use"
-    )
+    return FakeResponse([ToolUseBlock(block_id, name, tool_input)], stop_reason="tool_use")

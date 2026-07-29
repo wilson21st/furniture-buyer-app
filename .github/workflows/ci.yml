@@ -22,9 +22,20 @@ jobs:
       - name: Lint
         run: uv run ruff check .
 
-      - name: Tests + hard 90% coverage gate
-        # The default addopts already excludes e2e/live and enforces
-        # --cov-fail-under=90; this job fails if coverage regresses below 90%.
+      - name: Format check
+        run: uv run ruff format --check .
+
+      - name: Dependency vulnerability audit
+        run: uv run pip-audit
+        continue-on-error: true
+
+      - name: Static security scan (bandit)
+        run: uv run bandit -q -r app
+        continue-on-error: true
+
+      - name: Tests + hard coverage gate
+        # The default addopts exclude e2e/live and enforce --cov-fail-under=95;
+        # this job fails if coverage regresses below the gate.
         run: uv run pytest
 
       - name: Upload coverage report

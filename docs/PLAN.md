@@ -96,7 +96,12 @@ hackathon/
 └── .env                     # real secrets (NEVER committed)
 ```
 
-> **Lab-doc note:** the event asks for three docs — `CLAUDE.md`, `requirements.md`, `architecture.md`. We keep `CLAUDE.md` at repo root (Claude Code convention) and the other two under `docs/`.
+> **Lab-doc note:** the event asks for three docs — `CLAUDE.md`, `requirements.md`, `architecture.md`. We keep `CLAUDE.md` at repo root (Claude Code convention). In the as-built repo `requirements.md` and `architecture.md` also live at the **repo root** (not under `docs/`).
+>
+> **As-built deltas from the layout above** (kept here so the plan stays honest):
+> - Tests are **flat** in `tests/` (not split into `unit/ integration/ e2e/`), except `tests/e2e/` which does exist. The `e2e`/`live` split is by pytest **marker**, not directory.
+> - The pre-commit secret-scan is `.claude/hooks/guard-commit.sh` (a PreToolUse hook), not `scripts/check_secrets.py`.
+> - Added since: `app/llm.py` (shared Anthropic seam), `app/logging_config.py` (structured request logging + rate limiter), `app/shop.py` (unified L1/L2 façade), `app/openclaw.py` (Step 9). Deployment: `Dockerfile`, `fly.toml`, `docs/PRODUCTION_READINESS.md`.
 
 ### 2.2 Component diagram
 

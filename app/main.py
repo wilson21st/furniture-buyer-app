@@ -12,18 +12,25 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, Form, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlmodel import Session
+from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
 from starlette.middleware.sessions import SessionMiddleware
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from app import agent as agent_mod
-from app import services, shop
+from app import db, services, shop
 from app.auth import current_user_id, login_session, logout_session
 from app.config import get_settings
 from app.db import get_engine, get_session, init_db
 from app.furniture_api import FurnitureAPI
+from app.logging_config import (
+    RateLimitMiddleware,
+    RequestLoggingMiddleware,
+    configure_logging,
+)
 from app.tools import PendingOrder, ToolContext
 
 
@@ -42,15 +49,28 @@ CHAT_STORE: dict[str, ChatState] = {}
 def reset_chat_store() -> None:
     CHAT_STORE.clear()
 
+
 _STATIC_DIR = Path(__file__).parent / "static"
 TEMPLATES = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 
 # Named colours the catalogue/API use → hex, for product swatches in the UI.
 _COLOUR_HEX = {
-    "mustard": "#d9a441", "oak": "#c8a06a", "walnut": "#5b3a29", "white": "#eceef1",
-    "black": "#222834", "teal": "#1f7a8c", "blue": "#3b82f6", "grey": "#9aa0a6",
-    "gray": "#9aa0a6", "green": "#44aa88", "red": "#e05a4a", "pink": "#e88fb0",
-    "natural": "#d8c3a5", "beige": "#e3d9c6", "navy": "#22314f", "cream": "#efe7d6",
+    "mustard": "#d9a441",
+    "oak": "#c8a06a",
+    "walnut": "#5b3a29",
+    "white": "#eceef1",
+    "black": "#222834",
+    "teal": "#1f7a8c",
+    "blue": "#3b82f6",
+    "grey": "#9aa0a6",
+    "gray": "#9aa0a6",
+    "green": "#44aa88",
+    "red": "#e05a4a",
+    "pink": "#e88fb0",
+    "natural": "#d8c3a5",
+    "beige": "#e3d9c6",
+    "navy": "#22314f",
+    "cream": "#efe7d6",
 }
 
 
@@ -91,8 +111,29 @@ async def lifespan(app: FastAPI):
 
 
 def create_app() -> FastAPI:
+    settings = get_settings()
+    configure_logging()
     app = FastAPI(title="Furniture Buyer App", lifespan=lifespan)
-    app.add_middleware(SessionMiddleware, secret_key=get_settings().app_secret_key)
+
+    # Outermost first: log every request, then rate-limit spend routes.
+    app.add_middleware(RequestLoggingMiddleware)
+    if settings.rate_limit_enabled:
+        app.add_middleware(
+            RateLimitMiddleware,
+            per_minute=settings.rate_limit_per_minute,
+            guarded_prefixes=("/chat", "/buy", "/orders"),
+        )
+    app.add_middleware(
+        SessionMiddleware,
+        secret_key=settings.app_secret_key,
+        https_only=settings.secure_cookies,
+        same_site="lax",
+    )
+    if settings.force_https:
+        app.add_middleware(HTTPSRedirectMiddleware)
+    if settings.allowed_host_list != ["*"]:
+        app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.allowed_host_list)
+
     app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
     register_routes(app)
     return app
@@ -118,6 +159,13 @@ def register_routes(app: FastAPI) -> None:
     def health() -> dict:
         return {"status": "ok"}
 
+    @app.get("/ready")
+    def ready():
+        """Readiness probe: 200 only if the database answers."""
+        if db.check_connection():
+            return {"status": "ready"}
+        return JSONResponse({"status": "not ready"}, status_code=503)
+
     @app.get("/", response_class=HTMLResponse)
     def home(
         request: Request,
@@ -140,9 +188,7 @@ def register_routes(app: FastAPI) -> None:
 
     @app.get("/login", response_class=HTMLResponse)
     def login_form(request: Request):
-        return TEMPLATES.TemplateResponse(
-            request, "login.html", {"flash": _pop_flash(request)}
-        )
+        return TEMPLATES.TemplateResponse(request, "login.html", {"flash": _pop_flash(request)})
 
     @app.post("/login")
     def login_submit(

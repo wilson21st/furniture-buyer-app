@@ -46,6 +46,14 @@ class OrderOutcome:
     remaining_balance: float
 
 
+def _to_view(p: object) -> ProductView:
+    """Map either an API Product or a local Product row to a ProductView.
+
+    Both sources expose the same field names, so one mapper serves both backends.
+    """
+    return ProductView(p.item_id, p.product_name, p.price, p.category, p.colours)
+
+
 def list_catalogue(
     api: fa.FurnitureAPI | None,
     session: Session,
@@ -53,16 +61,8 @@ def list_catalogue(
     limit: int = 100,
 ) -> list[ProductView]:
     if api is not None:
-        products = api.search_products(category=category, limit=limit)
-        return [
-            ProductView(p.item_id, p.product_name, p.price, p.category, p.colours)
-            for p in products
-        ]
-    local = services.list_products(session, category=category, limit=limit)
-    return [
-        ProductView(p.item_id, p.product_name, p.price, p.category, p.colours)
-        for p in local
-    ]
+        return [_to_view(p) for p in api.search_products(category=category, limit=limit)]
+    return [_to_view(p) for p in services.list_products(session, category=category, limit=limit)]
 
 
 def get_balance(api: fa.FurnitureAPI | None, user: Customer) -> float:
@@ -76,20 +76,15 @@ def get_product_view(
 ) -> ProductView | None:
     if api is not None:
         try:
-            p = api.get_product(item_id)
+            return _to_view(api.get_product(item_id))
         except fa.ApiError:
             return None
-        return ProductView(p.item_id, p.product_name, p.price, p.category, p.colours)
     local = services.get_product(session, item_id)
-    if local is None:
-        return None
-    return ProductView(
-        local.item_id, local.product_name, local.price, local.category, local.colours
-    )
+    return _to_view(local) if local is not None else None
 
 
 def _friendly(exc: Exception) -> str:
-    if isinstance(exc, (fa.InsufficientBalanceError, services.InsufficientBalanceError)):
+    if isinstance(exc, (fa.InsufficientBalanceError, services.LocalInsufficientBalanceError)):
         return "Insufficient balance — this order costs more than you have left."
     if isinstance(exc, (fa.NotFoundError, services.ProductNotFoundError)):
         return "This item is no longer available."
@@ -121,13 +116,10 @@ def place_order(
     return OrderOutcome(order.item_id, order.total_price, user.local_balance)
 
 
-def order_history(
-    api: fa.FurnitureAPI | None, session: Session, user: Customer
-) -> list[OrderView]:
+def order_history(api: fa.FurnitureAPI | None, session: Session, user: Customer) -> list[OrderView]:
     if api is not None:
         return [
-            OrderView(r.item_id, r.quantity, r.total_price, r.status)
-            for r in api.order_history()
+            OrderView(r.item_id, r.quantity, r.total_price, r.status) for r in api.order_history()
         ]
     return [
         OrderView(o.item_id, o.quantity, o.total_price, o.status, o.created_at)

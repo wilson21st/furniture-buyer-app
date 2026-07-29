@@ -33,3 +33,12 @@ def test_get_session_dependency_yields_session(initialized_db):
         assert isinstance(session, Session)
     finally:
         gen.close()
+
+
+def test_check_connection_ok(initialized_db):
+    assert db.check_connection() is True
+
+
+def test_check_connection_false_on_broken_engine(monkeypatch):
+    monkeypatch.setattr(db, "get_engine", lambda: (_ for _ in ()).throw(RuntimeError("boom")))
+    assert db.check_connection() is False

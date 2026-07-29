@@ -19,22 +19,29 @@ def api_client(client, monkeypatch):
 
 
 def _login(client):
-    client.post(
-        "/login", data={"user_id": "u001", "password": "demo1234"}, follow_redirects=False
-    )
+    client.post("/login", data={"user_id": "u001", "password": "demo1234"}, follow_redirects=False)
 
 
 @respx.mock
 def test_home_and_nav_use_real_api(api_client):
     respx.get(f"{BASE}/catalogue/search-index").mock(
         return_value=httpx.Response(
-            200, json=[{"item_id": "API-1", "product_name": "Cloud Sofa", "price": 800.0,
-                        "category": "Sofas", "colours": ["grey"]}]
+            200,
+            json=[
+                {
+                    "item_id": "API-1",
+                    "product_name": "Cloud Sofa",
+                    "price": 800.0,
+                    "category": "Sofas",
+                    "colours": ["grey"],
+                }
+            ],
         )
     )
     respx.get(f"{BASE}/users/u001").mock(
-        return_value=httpx.Response(200, json={"user_id": "u001", "name": "Asha",
-                                               "balance": 4200.0})
+        return_value=httpx.Response(
+            200, json={"user_id": "u001", "name": "Asha", "balance": 4200.0}
+        )
     )
     _login(api_client)
     resp = api_client.get("/")
@@ -51,8 +58,16 @@ def test_buy_through_real_api_updates_balance_message(api_client):
     )
     respx.get(f"{BASE}/orders/u001").mock(
         return_value=httpx.Response(
-            200, json=[{"order_id": "o1", "item_id": "API-1", "quantity": 1,
-                        "total_price": 800.0, "status": "success"}]
+            200,
+            json=[
+                {
+                    "order_id": "o1",
+                    "item_id": "API-1",
+                    "quantity": 1,
+                    "total_price": 800.0,
+                    "status": "success",
+                }
+            ],
         )
     )
     respx.get(f"{BASE}/users/u001").mock(
@@ -71,9 +86,7 @@ def test_buy_insufficient_balance_via_api_shows_message(api_client):
     respx.post(f"{BASE}/orders").mock(
         return_value=httpx.Response(402, json={"detail": "insufficient"})
     )
-    respx.get(f"{BASE}/catalogue/search-index").mock(
-        return_value=httpx.Response(200, json=[])
-    )
+    respx.get(f"{BASE}/catalogue/search-index").mock(return_value=httpx.Response(200, json=[]))
     respx.get(f"{BASE}/users/u001").mock(
         return_value=httpx.Response(200, json={"user_id": "u001", "balance": 5.0})
     )

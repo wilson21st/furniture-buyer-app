@@ -60,8 +60,16 @@ def test_local_unknown_product_becomes_shoperror(session, user):
 def test_api_catalogue_and_balance(api, session, user):
     respx.get(f"{BASE}/catalogue/search-index").mock(
         return_value=httpx.Response(
-            200, json=[{"item_id": "API-1", "product_name": "Cloud Sofa", "price": 800.0,
-                        "category": "Sofas", "colours": ["grey"]}]
+            200,
+            json=[
+                {
+                    "item_id": "API-1",
+                    "product_name": "Cloud Sofa",
+                    "price": 800.0,
+                    "category": "Sofas",
+                    "colours": ["grey"],
+                }
+            ],
         )
     )
     respx.get(f"{BASE}/users/u001").mock(
@@ -106,8 +114,14 @@ def test_api_errors_map_to_friendly_shoperror(api, session, user, status, header
 def test_api_get_product_view_found_and_missing(api, session, user):
     respx.get(f"{BASE}/catalogue/API-1").mock(
         return_value=httpx.Response(
-            200, json={"item_id": "API-1", "product_name": "Cloud Sofa", "price": 800.0,
-                       "category": "Sofas", "colours": ["grey"]}
+            200,
+            json={
+                "item_id": "API-1",
+                "product_name": "Cloud Sofa",
+                "price": 800.0,
+                "category": "Sofas",
+                "colours": ["grey"],
+            },
         )
     )
     view = shop.get_product_view(api, session, "API-1")
@@ -128,8 +142,16 @@ def test_local_get_product_view_found_and_missing(session, user):
 def test_api_order_history(api, session, user):
     respx.get(f"{BASE}/orders/u001").mock(
         return_value=httpx.Response(
-            200, json=[{"order_id": "o1", "item_id": "API-1", "quantity": 2,
-                        "total_price": 1600.0, "status": "success"}]
+            200,
+            json=[
+                {
+                    "order_id": "o1",
+                    "item_id": "API-1",
+                    "quantity": 2,
+                    "total_price": 1600.0,
+                    "status": "success",
+                }
+            ],
         )
     )
     history = shop.order_history(api, session, user)

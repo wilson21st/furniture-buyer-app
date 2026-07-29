@@ -141,27 +141,50 @@ def _catalogue_mocks(router) -> None:
         return_value=httpx.Response(
             200,
             json=[
-                {"item_id": "CHR-001", "product_name": "Aria Accent Chair", "price": 399.0,
-                 "category": "Chairs", "colours": ["mustard"]},
-                {"item_id": "CHR-002", "product_name": "Nord Dining Chair", "price": 149.0,
-                 "category": "Chairs", "colours": ["oak"]},
+                {
+                    "item_id": "CHR-001",
+                    "product_name": "Aria Accent Chair",
+                    "price": 399.0,
+                    "category": "Chairs",
+                    "colours": ["mustard"],
+                },
+                {
+                    "item_id": "CHR-002",
+                    "product_name": "Nord Dining Chair",
+                    "price": 149.0,
+                    "category": "Chairs",
+                    "colours": ["oak"],
+                },
             ],
         )
     )
     router.get(f"{BASE}/catalogue/CHR-001").mock(
         return_value=httpx.Response(
-            200, json={"item_id": "CHR-001", "product_name": "Aria Accent Chair",
-                       "price": 399.0, "category": "Chairs", "colours": ["mustard"]}
+            200,
+            json={
+                "item_id": "CHR-001",
+                "product_name": "Aria Accent Chair",
+                "price": 399.0,
+                "category": "Chairs",
+                "colours": ["mustard"],
+            },
         )
     )
     router.get(f"{BASE}/users/u001").mock(
-        return_value=httpx.Response(200, json={"user_id": "u001", "name": "Asha",
-                                               "balance": 2500.0})
+        return_value=httpx.Response(
+            200, json={"user_id": "u001", "name": "Asha", "balance": 2500.0}
+        )
     )
     router.post(f"{BASE}/orders").mock(
-        return_value=httpx.Response(200, json={"order_id": "o1", "status": "success",
-                                               "total_price": 399.0,
-                                               "remaining_balance": 2101.0})
+        return_value=httpx.Response(
+            200,
+            json={
+                "order_id": "o1",
+                "status": "success",
+                "total_price": 399.0,
+                "remaining_balance": 2101.0,
+            },
+        )
     )
 
 
@@ -193,11 +216,18 @@ def run() -> Recorder:
             # --- Level 3: agent decides to search then order (confirm-before-spend) ---
             llm = _FakeLLM(
                 [
-                    _Resp([_ToolUse("t1", "search_catalogue",
-                                    {"category": "Chairs", "max_price": 500})],
-                          stop_reason="tool_use"),
-                    _Resp([_ToolUse("t2", "place_order", {"item_id": "CHR-001", "quantity": 1})],
-                          stop_reason="tool_use"),
+                    _Resp(
+                        [
+                            _ToolUse(
+                                "t1", "search_catalogue", {"category": "Chairs", "max_price": 500}
+                            )
+                        ],
+                        stop_reason="tool_use",
+                    ),
+                    _Resp(
+                        [_ToolUse("t2", "place_order", {"item_id": "CHR-001", "quantity": 1})],
+                        stop_reason="tool_use",
+                    ),
                     _Resp([_Text("Confirm buying the Aria Accent Chair for $399.00?")]),
                 ]
             )
@@ -213,15 +243,27 @@ def run() -> Recorder:
             index = rag.VectorIndex().build(
                 rag.chunk_products(
                     [
-                        {"item_id": "CHR-001", "product_name": "Mustard Chair",
-                         "price": 399.0, "category": "Chairs", "colours": ["mustard"]},
-                        {"item_id": "SOF-001", "product_name": "Blue Sofa", "price": 900.0,
-                         "category": "Sofas", "colours": ["blue"]},
+                        {
+                            "item_id": "CHR-001",
+                            "product_name": "Mustard Chair",
+                            "price": 399.0,
+                            "category": "Chairs",
+                            "colours": ["mustard"],
+                        },
+                        {
+                            "item_id": "SOF-001",
+                            "product_name": "Blue Sofa",
+                            "price": 900.0,
+                            "category": "Sofas",
+                            "colours": ["blue"],
+                        },
                     ]
                 )
             )
             rag.answer_question(
-                index, "something cheap like a chair", k=1,
+                index,
+                "something cheap like a chair",
+                k=1,
                 llm=_FakeLLM([_Resp([_Text("The Mustard Chair (CHR-001).")])]),
             )
         api.close()
@@ -288,8 +330,10 @@ def print_tree(span: RecSpan, depth: int = 0) -> tuple[int, int, int]:
 def main() -> None:
     recorder = run()
     if get_settings().langfuse_enabled:
-        print("Ran scenario with LANGFUSE_ENABLED=true — spans/generations flushed to "
-              f"{get_settings().langfuse_host}. Query the API to inspect them.")
+        print(
+            "Ran scenario with LANGFUSE_ENABLED=true — spans/generations flushed to "
+            f"{get_settings().langfuse_host}. Query the API to inspect them."
+        )
         return
     print("\n=== OBSERVABILITY TRACE TREE (in-process recorder) ===\n")
     total_spans = total_api = total_gens = 0

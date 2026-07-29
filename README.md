@@ -16,7 +16,8 @@ It is built with three engineering requirements woven through every step:
 - **Version control** — public GitHub repo, one commit + tag per lab step.
 - **Observability** — the *development process* is observable via Claude Code telemetry +
   hooks (`.claude/`), and the *running code* is observable via **self-hosted Langfuse**.
-- **Test coverage** — a hard **90%** gate enforced in CI, never allowed to regress.
+- **Test coverage** — a hard **95%** gate enforced in CI, never allowed to regress
+  (the suite currently sits at 100%).
 
 ## Quick start
 
@@ -46,7 +47,7 @@ stream dev-session token/cost/tool metrics to an OTEL collector. Hooks in
 ## Testing
 
 ```bash
-uv run pytest              # unit + integration, enforces the 90% gate
+uv run pytest              # unit + integration, enforces the 95% gate
 uv run pytest -m e2e       # Playwright end-to-end (needs a running server)
 uv run pytest -m live      # hits real external services (needs creds)
 ```
@@ -73,4 +74,4 @@ hosting.
 `.env` placeholders you must fill from the organizers / your own accounts: the furniture
 API base URL + your `X-Api-Key` + `FURNITURE_USER_ID`, an `ANTHROPIC_API_KEY`, a
 `VOYAGE_API_KEY` (RAG), and Langfuse keys. Everything is stubbed behind `app/config.py`
-and mocked in tests, so the code runs and stays 90%-covered without them.
+and mocked in tests, so the code runs and stays fully covered without them.

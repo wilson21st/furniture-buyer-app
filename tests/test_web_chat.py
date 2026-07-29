@@ -9,9 +9,7 @@ from app import services
 
 
 def _login(client):
-    client.post(
-        "/login", data={"user_id": "u001", "password": "demo1234"}, follow_redirects=False
-    )
+    client.post("/login", data={"user_id": "u001", "password": "demo1234"}, follow_redirects=False)
 
 
 def test_chat_requires_login(client):
@@ -97,12 +95,9 @@ def test_chat_cancel_clears_pending(client):
 
 
 def test_chat_post_endpoints_require_login(client):
-    assert client.post(
-        "/chat", data={"message": "hi"}, follow_redirects=False
-    ).headers["location"] == "/login"
-    assert client.post("/chat/confirm", follow_redirects=False).headers["location"] == (
-        "/login"
+    assert (
+        client.post("/chat", data={"message": "hi"}, follow_redirects=False).headers["location"]
+        == "/login"
     )
-    assert client.post("/chat/cancel", follow_redirects=False).headers["location"] == (
-        "/login"
-    )
+    assert client.post("/chat/confirm", follow_redirects=False).headers["location"] == ("/login")
+    assert client.post("/chat/cancel", follow_redirects=False).headers["location"] == ("/login")

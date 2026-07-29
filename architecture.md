@@ -12,26 +12,29 @@
 
 ## Entity model
 
+This diagram is the **as-built** SQLModel schema (`app/models.py`). Colours are stored
+as a JSON string (`colours_json`) and exposed via a `colours` property.
+
 ```mermaid
 classDiagram
     class Customer {
-        +string user_id
+        +string user_id  "PK"
         +string name
         +string password_hash
         +float local_balance
         +datetime created_at
     }
     class Product {
-        +string item_id
+        +string item_id  "PK"
         +string product_name
         +float price
         +string category
-        +list~string~ colours
+        +string colours_json  "→ colours property"
         +string image_url
     }
     class Order {
-        +int id
-        +string user_id
+        +int id  "PK"
+        +string user_id  "FK → Customer"
         +string item_id
         +int quantity
         +float total_price
@@ -44,8 +47,11 @@ classDiagram
 
 - A **Customer** logs in and has a local balance (Level 1). From Level 2 on, the
   authoritative balance is the external API's; the local one is a fallback for offline dev.
-- A **Product** mirrors the catalogue fields (`item_id`, `product_name`, `price`,
-  `category`, `colours`, plus `image_url`/dimensions from the shared MongoDB).
+- A **Product** stores the core catalogue fields we browse and order against. The
+  external API and the shared MongoDB carry a **richer set** (`colour_count`, `link`,
+  `depth`/`height`/`width`, `image_mime_type`, base64 image); we deliberately keep the
+  local table slim and read those extras from the API only when needed. The typed API
+  shapes live in `app/furniture_api.py`, not this table.
 - An **Order** links a customer to a product with a quantity and a captured total price.
 
 ## Component view

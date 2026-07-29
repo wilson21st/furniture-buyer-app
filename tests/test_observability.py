@@ -140,6 +140,22 @@ def test_span_legacy_method_fallback():
         assert isinstance(handle, FakeSpan)
 
 
+def test_span_v4_update_failure_is_swallowed():
+    """A handle whose update() raises must not break the span context."""
+
+    class ExplodingSpan(V4Span):
+        def update(self, **kwargs):
+            raise RuntimeError("tracing backend down")
+
+    class ExplodingClient(V4Client):
+        def start_as_current_observation(self, as_type, name, **kwargs):
+            return ExplodingSpan(self, name)
+
+    obs.set_client(ExplodingClient())
+    with obs.span("boom", user="u001") as handle:  # must not raise
+        assert isinstance(handle, ExplodingSpan)
+
+
 def test_span_no_method_yields_noop():
     class Empty:
         pass
@@ -193,9 +209,7 @@ def test_span_v4_uses_current_observation_and_ends():
 def test_record_generation_v4_starts_generation_observation():
     client = V4Client()
     obs.set_client(client)
-    result = obs.record_generation(
-        name="chat", model="claude", input="hi", output="hello"
-    )
+    result = obs.record_generation(name="chat", model="claude", input="hi", output="hello")
     assert isinstance(result, V4Span)
     assert client.generations[0]["as_type"] == "generation"
     assert client.generations[0]["model"] == "claude"

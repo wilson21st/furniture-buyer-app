@@ -56,7 +56,7 @@ def test_place_order_unknown_product_raises(session):
 def test_place_order_insufficient_balance_raises(session):
     services.seed_placeholder_products(session)
     user = services.create_user(session, "u001", "Asha", "pw", balance=50.0)
-    with pytest.raises(services.InsufficientBalanceError) as exc:
+    with pytest.raises(services.LocalInsufficientBalanceError) as exc:
         services.place_order(session, user, "CHR-001")  # 399 > 50
     assert exc.value.needed == 399.0
     assert exc.value.available == 50.0
@@ -76,4 +76,15 @@ def test_bootstrap_demo_idempotent(session):
     services.bootstrap_demo(session)
     services.bootstrap_demo(session)  # second call is a no-op
     assert session.get(Customer, services.DEMO_USER_ID) is not None
+    assert len(services.list_products(session)) == 5
+
+
+def test_bootstrap_demo_skips_user_when_seeding_disabled(session, monkeypatch):
+    from app.config import get_settings
+
+    monkeypatch.setenv("SEED_DEMO_USER", "false")
+    get_settings.cache_clear()
+    services.bootstrap_demo(session)
+    # Catalogue still seeded, but the known-credential demo user is NOT created.
+    assert session.get(Customer, services.DEMO_USER_ID) is None
     assert len(services.list_products(session)) == 5

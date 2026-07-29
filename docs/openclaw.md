@@ -22,10 +22,11 @@ the in-app agent. The descriptor is produced by `app/openclaw.py`:
 
 ```python
 from app import openclaw
-openclaw.manifest()      # → {name, description, permissions, confirm_before, tools}
+
+openclaw.manifest()  # → {name, description, permissions, confirm_before, tools}
 openclaw.handle("search_catalogue", {"category": "Chairs"})
 openclaw.handle("place_order", {"item_id": "CHR-001", "quantity": 1})  # returns pending
-openclaw.confirm_order("CHR-001", 1)                                    # spends (after "yes")
+openclaw.confirm_order("CHR-001", 1)  # spends (after "yes")
 ```
 
 Point OpenClaw's skill loader at `manifest()` for the tool schemas and route tool calls to

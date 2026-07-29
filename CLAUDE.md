@@ -15,7 +15,8 @@ RAG Q&A bot. See `requirements.md` (what) and `architecture.md` (how).
    hook blocks staged secrets — do not bypass it.
 2. **Every new LLM call must be traced with Langfuse.** Wrap agent turns, tool calls,
    embeddings, and generations via `app/observability.py`. No un-observed model calls.
-3. **Tests + coverage must pass before every commit.** Hard gate: `--cov-fail-under=90`.
+3. **Tests + coverage must pass before every commit.** Hard gate: `--cov-fail-under=95`
+   (ratcheted up from the original 90% now that the suite sits at 100%).
    Coverage may never regress. New code ships with its tests in the same commit.
 4. **Plan before building.** For any non-trivial change, state the plan in plain English
    first, then implement. Keep instructions small — one clear change at a time.
@@ -30,7 +31,7 @@ RAG Q&A bot. See `requirements.md` (what) and `architecture.md` (how).
 - `POST /orders` spends a real event balance. The agent must confirm before spending.
 
 ## Commands
-- `uv run pytest` — unit + integration, with the 90% gate.
+- `uv run pytest` — unit + integration, with the 95% gate.
 - `uv run pytest -m e2e` — Playwright end-to-end (needs a running server).
 - `uv run pytest -m live` — tests that hit real external services (needs creds).
 - `uv run uvicorn app.main:app --reload` — run the app.
