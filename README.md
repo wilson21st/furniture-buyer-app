@@ -49,9 +49,20 @@ uv run pytest -m e2e       # Playwright end-to-end (needs a running server)
 uv run pytest -m live      # hits real external services (needs creds)
 ```
 
+## Deploy
+Containerised (`Dockerfile`). Recommended host: **Fly.io** (`fly.toml`, persistent SQLite
+volume) with a GitHub Actions workflow that deploys after CI passes. Full options — Fly,
+Render, Cloud Run, Codespaces, ngrok, and why GitHub Pages can't host it — are in
+`docs/deployment.md`.
+
+```bash
+docker build -t furniture-buyer . && docker run -p 8080:8080 -e APP_SECRET_KEY=dev furniture-buyer
+```
+
 ## Repo map
 See `architecture.md` for module responsibilities and diagrams, `requirements.md` for the
-acceptance criteria, and `docs/PLAN.md` for the full build plan and per-step matrix.
+acceptance criteria, `docs/PLAN.md` for the full build plan, and `docs/deployment.md` for
+hosting.
 
 ## Credentials you need to supply
 `.env` placeholders you must fill from the organizers / your own accounts: the furniture
