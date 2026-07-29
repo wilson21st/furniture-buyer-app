@@ -21,6 +21,15 @@ services:
       - "3000:3000"
     environment: &langfuse-env
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/postgres
+      # Headless bootstrap: provisions an org/project with fixed keys on first boot,
+      # so you can enable observability without clicking through the signup UI.
+      LANGFUSE_INIT_ORG_ID: hackathon
+      LANGFUSE_INIT_PROJECT_ID: furniture-buyer
+      LANGFUSE_INIT_PROJECT_PUBLIC_KEY: pk-lf-hackathon-public
+      LANGFUSE_INIT_PROJECT_SECRET_KEY: sk-lf-hackathon-secret
+      LANGFUSE_INIT_USER_EMAIL: dev@example.com
+      LANGFUSE_INIT_USER_NAME: Dev
+      LANGFUSE_INIT_USER_PASSWORD: hackathon-dev-pw
       SALT: "changeme-salt"
       ENCRYPTION_KEY: "0000000000000000000000000000000000000000000000000000000000000000"
       NEXTAUTH_SECRET: "changeme-nextauth"
