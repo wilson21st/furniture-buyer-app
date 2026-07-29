@@ -15,12 +15,25 @@ from fastapi.templating import Jinja2Templates
 from sqlmodel import Session
 from starlette.middleware.sessions import SessionMiddleware
 
-from app import services
+from app import services, shop
 from app.auth import current_user_id, login_session, logout_session
 from app.config import get_settings
 from app.db import get_engine, get_session, init_db
+from app.furniture_api import FurnitureAPI
 
 TEMPLATES = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
+
+
+def get_api():
+    """Yield a FurnitureAPI when USE_REAL_API is on, else None (Level 1 local mode)."""
+    if not get_settings().use_real_api:
+        yield None
+        return
+    api = FurnitureAPI.from_settings()
+    try:
+        yield api
+    finally:
+        api.close()
 
 
 @asynccontextmanager
@@ -59,13 +72,23 @@ def register_routes(app: FastAPI) -> None:
         return {"status": "ok"}
 
     @app.get("/", response_class=HTMLResponse)
-    def home(request: Request, session: Session = Depends(get_session)):
+    def home(
+        request: Request,
+        session: Session = Depends(get_session),
+        api: FurnitureAPI | None = Depends(get_api),
+    ):
         user = _require_user(request, session)
-        products = services.list_products(session, limit=100)
+        products = shop.list_catalogue(api, session, limit=100)
+        balance = shop.get_balance(api, user) if user else None
         return TEMPLATES.TemplateResponse(
             request,
             "home.html",
-            {"products": products, "user": user, "flash": _pop_flash(request)},
+            {
+                "products": products,
+                "user": user,
+                "balance": balance,
+                "flash": _pop_flash(request),
+            },
         )
 
     @app.get("/login", response_class=HTMLResponse)
@@ -100,40 +123,43 @@ def register_routes(app: FastAPI) -> None:
         item_id: str,
         quantity: int = Form(1),
         session: Session = Depends(get_session),
+        api: FurnitureAPI | None = Depends(get_api),
     ):
         user = _require_user(request, session)
         if user is None:
             _flash(request, "Please log in to place an order.", "error")
             return RedirectResponse("/login", status_code=303)
         try:
-            order = services.place_order(session, user, item_id, quantity)
-        except services.InsufficientBalanceError as exc:
-            _flash(request, str(exc), "error")
-            return RedirectResponse("/", status_code=303)
-        except services.ProductNotFoundError as exc:
+            outcome = shop.place_order(api, session, user, item_id, quantity)
+        except shop.ShopError as exc:
             _flash(request, str(exc), "error")
             return RedirectResponse("/", status_code=303)
         _flash(
             request,
-            f"Ordered {order.item_id} for ${order.total_price:.2f}. "
-            f"Balance now ${user.local_balance:.2f}.",
+            f"Ordered {outcome.item_id} for ${outcome.total_price:.2f}. "
+            f"Balance now ${outcome.remaining_balance:.2f}.",
             "info",
         )
         return RedirectResponse("/orders", status_code=303)
 
     @app.get("/orders", response_class=HTMLResponse)
-    def orders(request: Request, session: Session = Depends(get_session)):
+    def orders(
+        request: Request,
+        session: Session = Depends(get_session),
+        api: FurnitureAPI | None = Depends(get_api),
+    ):
         user = _require_user(request, session)
         if user is None:
             _flash(request, "Please log in to see your orders.", "error")
             return RedirectResponse("/login", status_code=303)
-        history = services.order_history(session, user.user_id)
-        spent = services.total_spent(session, user.user_id)
+        history = shop.order_history(api, session, user)
+        spent = sum(o.total_price for o in history)
         return TEMPLATES.TemplateResponse(
             request,
             "orders.html",
             {
                 "user": user,
+                "balance": shop.get_balance(api, user),
                 "orders": history,
                 "total_spent": spent,
                 "flash": _pop_flash(request),

@@ -3,7 +3,7 @@
 {% block content %}
   <h1>My orders</h1>
   <p>Total spent: <strong>${{ "%.2f"|format(total_spent) }}</strong> ·
-     Balance: <strong>${{ "%.2f"|format(user.local_balance) }}</strong></p>
+     Balance: <strong>${{ "%.2f"|format(balance or 0) }}</strong></p>
   <table>
     <thead>
       <tr><th>When</th><th>Item</th><th>Qty</th><th>Total</th><th>Status</th></tr>
@@ -11,7 +11,7 @@
     <tbody>
       {% for order in orders %}
         <tr>
-          <td>{{ order.created_at.strftime("%Y-%m-%d %H:%M") }}</td>
+          <td>{% if order.created_at %}{{ order.created_at.strftime("%Y-%m-%d %H:%M") }}{% else %}—{% endif %}</td>
           <td>{{ order.item_id }}</td>
           <td>{{ order.quantity }}</td>
           <td>${{ "%.2f"|format(order.total_price) }}</td>

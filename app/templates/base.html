@@ -25,7 +25,7 @@
     <a href="/orders">My orders</a>
     <span class="spacer"></span>
     {% if user %}
-      <span>{{ user.name }} · ${{ "%.2f"|format(user.local_balance) }}</span>
+      <span>{{ user.name }} · ${{ "%.2f"|format(balance or 0) }}</span>
       <form method="post" action="/logout" style="display:inline">
         <button type="submit">Log out</button>
       </form>

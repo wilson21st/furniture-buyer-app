@@ -25,6 +25,9 @@ class Settings(BaseSettings):
     furniture_api_base_url: str = "https://day1.training.cognitivo.com.au"
     furniture_api_key: str = ""
     furniture_user_id: str = "u001"
+    # When true, catalogue/balance/orders come from the real API (Step 5+).
+    # When false, the app runs fully on local SQLite (Level 1).
+    use_real_api: bool = False
 
     # Shared read-only catalogue (Step 2 seed)
     catalogue_mongo_uri: str = ""
