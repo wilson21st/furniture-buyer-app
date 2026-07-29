@@ -77,3 +77,13 @@ def test_handle_builds_own_context_when_none(initialized_db):
         services.create_user(s, "u001", "Asha", "pw", balance=100.0)
     out = openclaw.handle("check_balance")
     assert "content" in out
+
+
+def test_confirm_order_builds_own_context_when_none(initialized_db):
+    # confirm_order with no ctx builds+closes its own session (own-context branch).
+    with Session(initialized_db) as s:
+        services.seed_placeholder_products(s)
+    # build_context's ad-hoc user has a 0 balance, so this fails gracefully —
+    # which is exactly the path that runs the `finally: ctx.session.close()`.
+    result = openclaw.confirm_order("CHR-001", 1)
+    assert result["status"] == "error"

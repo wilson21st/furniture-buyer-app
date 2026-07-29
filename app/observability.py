@@ -58,7 +58,7 @@ def get_client() -> Any | None:
         secret_key=settings.langfuse_secret_key,
         host=settings.langfuse_host,
     )
-    return _client
+    return _client  # pragma: no cover
 
 
 def _start_span_legacy(client: Any, name: str, attributes: dict) -> Any:
@@ -81,7 +81,7 @@ def _safe_update(handle: Any, attributes: dict) -> None:
     if callable(update):
         try:
             update(metadata=attributes)
-        except Exception:  # noqa: BLE001 - never let tracing break the app
+        except Exception:  # noqa: BLE001  # nosec B110 - never let tracing break the app
             pass
 
 
@@ -133,9 +133,7 @@ def record_generation(
     fn = getattr(client, "generation", None) or getattr(client, "create_generation", None)
     if not callable(fn):
         return None
-    return fn(
-        name=name, model=model, input=input, output=output, usage=usage, metadata=metadata
-    )
+    return fn(name=name, model=model, input=input, output=output, usage=usage, metadata=metadata)
 
 
 def observe(fn: Callable | None = None, *, name: str | None = None) -> Callable:

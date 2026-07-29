@@ -10,6 +10,7 @@ from __future__ import annotations
 from sqlmodel import Session, func, select
 
 from app.auth import hash_password, verify_password
+from app.config import get_settings
 from app.models import Customer, Order, Product
 
 
@@ -23,7 +24,7 @@ class ProductNotFoundError(ServiceError):
         super().__init__(f"Product '{item_id}' is no longer available.")
 
 
-class InsufficientBalanceError(ServiceError):
+class LocalInsufficientBalanceError(ServiceError):
     def __init__(self, needed: float, available: float):
         self.needed = needed
         self.available = available
@@ -83,9 +84,7 @@ def seed_placeholder_products(session: Session) -> int:
     for item_id, name, price, category, colours in placeholders:
         if session.get(Product, item_id):
             continue
-        product = Product(
-            item_id=item_id, product_name=name, price=price, category=category
-        )
+        product = Product(item_id=item_id, product_name=name, price=price, category=category)
         product.set_colours(colours)
         session.add(product)
         count += 1
@@ -94,19 +93,15 @@ def seed_placeholder_products(session: Session) -> int:
 
 
 # --- Orders (workflow rule + report) ---------------------------------------
-def place_order(
-    session: Session, user: Customer, item_id: str, quantity: int = 1
-) -> Order:
+def place_order(session: Session, user: Customer, item_id: str, quantity: int = 1) -> Order:
     product = session.get(Product, item_id)
     if product is None:
         raise ProductNotFoundError(item_id)
     total = product.price * quantity
     if total > user.local_balance:
-        raise InsufficientBalanceError(needed=total, available=user.local_balance)
+        raise LocalInsufficientBalanceError(needed=total, available=user.local_balance)
     user.local_balance -= total
-    order = Order(
-        user_id=user.user_id, item_id=item_id, quantity=quantity, total_price=total
-    )
+    order = Order(user_id=user.user_id, item_id=item_id, quantity=quantity, total_price=total)
     session.add(order)
     session.add(user)
     session.commit()
@@ -115,9 +110,7 @@ def place_order(
 
 
 def order_history(session: Session, user_id: str) -> list[Order]:
-    statement = (
-        select(Order).where(Order.user_id == user_id).order_by(Order.created_at.desc())
-    )
+    statement = select(Order).where(Order.user_id == user_id).order_by(Order.created_at.desc())
     return list(session.exec(statement).all())
 
 
@@ -130,15 +123,18 @@ def total_spent(session: Session, user_id: str) -> float:
 
 # --- Bootstrap -------------------------------------------------------------
 DEMO_USER_ID = "u001"
-DEMO_PASSWORD = "demo1234"
+DEMO_PASSWORD = "demo1234"  # nosec B105 - dev-only demo credential, gated by SEED_DEMO_USER
 DEMO_BALANCE = 2500.0
 
 
 def bootstrap_demo(session: Session) -> None:
-    """Idempotently ensure a demo user + placeholder catalogue exist."""
-    if session.get(Customer, DEMO_USER_ID) is None:
-        create_user(
-            session, DEMO_USER_ID, "Asha Verma", DEMO_PASSWORD, balance=DEMO_BALANCE
-        )
+    """Idempotently ensure a demo user + placeholder catalogue exist.
+
+    The known-credential demo user is only seeded when ``SEED_DEMO_USER`` is on
+    (default in dev; forced off in prod by config validation). The placeholder
+    catalogue is always safe to seed as a browsing fallback.
+    """
+    if get_settings().seed_demo_user and session.get(Customer, DEMO_USER_ID) is None:
+        create_user(session, DEMO_USER_ID, "Asha Verma", DEMO_PASSWORD, balance=DEMO_BALANCE)
     if not list_products(session, limit=1):
         seed_placeholder_products(session)

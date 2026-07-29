@@ -10,12 +10,13 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Protocol
+from typing import Protocol
 
 import numpy as np
 
 from app import observability
 from app.config import get_settings
+from app.llm import LLM, default_anthropic, extract_text
 
 
 # --- Data ------------------------------------------------------------------
@@ -38,11 +39,6 @@ class Embedder(Protocol):
         ...
 
 
-class LLM(Protocol):
-    def create(self, **kwargs: Any) -> Any:  # pragma: no cover
-        ...
-
-
 def default_embedder() -> Embedder:  # pragma: no cover - needs voyage + key
     import voyageai
 
@@ -58,16 +54,7 @@ def default_embedder() -> Embedder:  # pragma: no cover - needs voyage + key
 
 
 def default_rag_llm() -> LLM:  # pragma: no cover - needs anthropic + key
-    from anthropic import Anthropic
-
-    settings = get_settings()
-    client = Anthropic(api_key=settings.anthropic_api_key)
-
-    class _Anthropic:
-        def create(self, **kwargs: Any) -> Any:
-            return client.messages.create(**kwargs)
-
-    return _Anthropic()
+    return default_anthropic()
 
 
 _embedder_factory: Callable[[], Embedder] = default_embedder
@@ -148,19 +135,11 @@ class VectorIndex:
             return [(self._chunks[i], float(sims[i])) for i in order]
 
 
-def _extract_text(response: Any) -> str:
-    return "\n".join(
-        b.text for b in response.content if getattr(b, "type", "") == "text"
-    )
-
-
 def answer_question(
     index: VectorIndex, question: str, k: int = 3, llm: LLM | None = None
 ) -> RagAnswer:
     hits = index.search(question, k=k)
-    context = "\n".join(
-        f"- [{c.item_id}] {c.text}" for c, _ in hits
-    )
+    context = "\n".join(f"- [{c.item_id}] {c.text}" for c, _ in hits)
     prompt = (
         "Answer the question using ONLY the products below. If none fit, say so.\n\n"
         f"Products:\n{context}\n\nQuestion: {question}"
@@ -172,7 +151,7 @@ def answer_question(
         max_tokens=512,
         messages=[{"role": "user", "content": prompt}],
     )
-    text = _extract_text(response)
+    text = extract_text(response.content)
     observability.record_generation(
         name="rag.answer", model=settings.anthropic_model, input=question, output=text
     )

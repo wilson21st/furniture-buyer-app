@@ -76,8 +76,10 @@ def live_server(tmp_path, monkeypatch):
     agent_mod.set_llm_factory(
         lambda: _FakeLLM(
             [
-                _Resp([_ToolUse("t1", "place_order", {"item_id": "CHR-001", "quantity": 1})],
-                      stop_reason="tool_use"),
+                _Resp(
+                    [_ToolUse("t1", "place_order", {"item_id": "CHR-001", "quantity": 1})],
+                    stop_reason="tool_use",
+                ),
                 _Resp([_Text("Confirm the Aria Accent Chair for $399.00?")]),
             ]
         )

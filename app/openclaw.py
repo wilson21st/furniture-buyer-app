@@ -69,16 +69,12 @@ def handle(tool_name: str, params: dict | None = None, ctx: ToolContext | None =
             ctx.session.close()
 
 
-def confirm_order(
-    item_id: str, quantity: int = 1, ctx: ToolContext | None = None
-) -> dict:
+def confirm_order(item_id: str, quantity: int = 1, ctx: ToolContext | None = None) -> dict:
     """Finalise a previously-surfaced order (this is the step that spends money)."""
     own = ctx is None
     ctx = ctx or build_context()
     try:
-        outcome = agent_mod.execute_confirmed_order(
-            ctx, PendingOrder(item_id, "", 0.0, quantity)
-        )
+        outcome = agent_mod.execute_confirmed_order(ctx, PendingOrder(item_id, "", 0.0, quantity))
         return {
             "status": "success",
             "item_id": item_id,

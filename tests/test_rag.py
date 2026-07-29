@@ -24,12 +24,27 @@ class BagEmbedder:
 
 
 PRODUCTS = [
-    {"item_id": "CHR-001", "product_name": "Mustard Chair", "price": 399.0,
-     "category": "Chairs", "colours": ["mustard"]},
-    {"item_id": "SOF-001", "product_name": "Blue Sofa", "price": 900.0,
-     "category": "Sofas", "colours": ["blue"]},
-    {"item_id": "LMP-001", "product_name": "Grey Lamp", "price": 49.0,
-     "category": "Lighting", "colours": ["grey"]},
+    {
+        "item_id": "CHR-001",
+        "product_name": "Mustard Chair",
+        "price": 399.0,
+        "category": "Chairs",
+        "colours": ["mustard"],
+    },
+    {
+        "item_id": "SOF-001",
+        "product_name": "Blue Sofa",
+        "price": 900.0,
+        "category": "Sofas",
+        "colours": ["blue"],
+    },
+    {
+        "item_id": "LMP-001",
+        "product_name": "Grey Lamp",
+        "price": 49.0,
+        "category": "Lighting",
+        "colours": ["grey"],
+    },
 ]
 
 

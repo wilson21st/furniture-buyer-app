@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Iterator
 from pathlib import Path
 
-from sqlmodel import Session, SQLModel, create_engine
+from sqlmodel import Session, SQLModel, create_engine, text
 
 from app.config import get_settings
 
@@ -40,6 +40,16 @@ def get_session() -> Iterator[Session]:
     """FastAPI dependency: yield a session bound to the engine."""
     with Session(get_engine()) as session:
         yield session
+
+
+def check_connection() -> bool:
+    """Readiness probe: return True iff the database answers a trivial query."""
+    try:
+        with Session(get_engine()) as session:
+            session.exec(text("SELECT 1"))
+        return True
+    except Exception:  # noqa: BLE001 - any failure means "not ready"
+        return False
 
 
 def reset_engine() -> None:

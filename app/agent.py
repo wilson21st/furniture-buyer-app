@@ -11,11 +11,12 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Protocol
+from typing import Any
 
 from app import observability
 from app import tools as tools_mod
 from app.config import get_settings
+from app.llm import LLM, default_anthropic, extract_text
 from app.shop import OrderOutcome, place_order
 from app.tools import PendingOrder, ToolContext
 
@@ -35,11 +36,6 @@ SYSTEM_PROMPT = (
 MAX_STEPS = 6
 
 
-class LLM(Protocol):
-    def create(self, **kwargs: Any) -> Any:  # pragma: no cover - protocol
-        ...
-
-
 @dataclass
 class AgentReply:
     text: str
@@ -48,16 +44,7 @@ class AgentReply:
 
 
 def default_llm() -> LLM:  # pragma: no cover - needs anthropic + key
-    from anthropic import Anthropic
-
-    settings = get_settings()
-    client = Anthropic(api_key=settings.anthropic_api_key)
-
-    class _Anthropic:
-        def create(self, **kwargs: Any) -> Any:
-            return client.messages.create(**kwargs)
-
-    return _Anthropic()
+    return default_anthropic()
 
 
 _llm_factory: Callable[[], LLM] = default_llm
@@ -73,10 +60,6 @@ def _block_to_dict(block: Any) -> dict:
     if block.type == "tool_use":
         return {"type": "tool_use", "id": block.id, "name": block.name, "input": block.input}
     return {"type": "text", "text": getattr(block, "text", "")}
-
-
-def _extract_text(blocks: list) -> str:
-    return "\n".join(b.text for b in blocks if b.type == "text" and getattr(b, "text", ""))
 
 
 class Agent:
@@ -116,7 +99,7 @@ class Agent:
                 )
 
                 if getattr(response, "stop_reason", None) != "tool_use":
-                    return AgentReply(_extract_text(blocks), pending, steps), messages
+                    return AgentReply(extract_text(blocks), pending, steps), messages
 
                 tool_results = []
                 for block in blocks:
@@ -139,9 +122,7 @@ class Agent:
                 messages.append({"role": "user", "content": tool_results})
 
         return (
-            AgentReply(
-                "Sorry, I couldn't finish that — let's try rephrasing.", pending, steps
-            ),
+            AgentReply("Sorry, I couldn't finish that — let's try rephrasing.", pending, steps),
             messages,
         )
 

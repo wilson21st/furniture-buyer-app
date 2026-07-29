@@ -16,7 +16,9 @@ dependencies = [
     "pydantic-settings>=2.6",
     "pymongo>=4.10",
     "anthropic>=0.40",
-    "langfuse>=2.53",
+    # Pinned to v4.x: app/observability.py targets the v4 OTEL API. A looser floor
+    # could pull an untested v2/v3 SDK at install time.
+    "langfuse>=4,<5",
     "numpy>=2.1",
     "pypdf>=5.1",
     "voyageai>=0.3",
@@ -31,6 +33,8 @@ dev = [
     "pytest-playwright>=0.5",
     "ruff>=0.8",
     "mongomock>=4.2",
+    "pip-audit>=2.7",
+    "bandit>=1.8",
 ]
 
 [tool.pytest.ini_options]
@@ -38,7 +42,7 @@ testpaths = ["tests"]
 # Default run = unit + integration only (fast, deterministic), and it is what the
 # hard 90% coverage gate applies to. e2e/live need a running server or real creds,
 # so they are excluded here and run explicitly: `uv run pytest -m e2e` / `-m live`.
-addopts = "-m 'not e2e and not live' --cov=app --cov-report=term-missing --cov-report=xml --cov-fail-under=90 --strict-markers"
+addopts = "-m 'not e2e and not live' --cov=app --cov-report=term-missing --cov-report=xml --cov-fail-under=95 --strict-markers"
 markers = [
     "live: tests that hit real external services (deselected by default; run with -m live)",
     "e2e: end-to-end Playwright tests (require a running server; run with -m e2e)",
@@ -47,7 +51,6 @@ asyncio_mode = "auto"
 
 [tool.coverage.run]
 source = ["app"]
-omit = ["app/__main__.py"]
 
 [tool.coverage.report]
 show_missing = true

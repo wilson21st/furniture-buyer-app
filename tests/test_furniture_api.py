@@ -44,8 +44,14 @@ def test_search_products_passes_params_and_no_auth(api):
         return_value=httpx.Response(
             200,
             json=[
-                {"item_id": "CHR-001", "product_name": "Aria", "price": 399.0,
-                 "category": "Chairs", "colours": ["mustard"], "colour_count": 1}
+                {
+                    "item_id": "CHR-001",
+                    "product_name": "Aria",
+                    "price": 399.0,
+                    "category": "Chairs",
+                    "colours": ["mustard"],
+                    "colour_count": 1,
+                }
             ],
         )
     )
@@ -72,8 +78,12 @@ def test_get_product_ignores_extra_image_field(api):
     respx.get(f"{BASE}/catalogue/CHR-001").mock(
         return_value=httpx.Response(
             200,
-            json={"item_id": "CHR-001", "product_name": "Aria", "price": 399.0,
-                  "image": "data:image/jpeg;base64,AAAABBBB"},  # must be ignored
+            json={
+                "item_id": "CHR-001",
+                "product_name": "Aria",
+                "price": 399.0,
+                "image": "data:image/jpeg;base64,AAAABBBB",
+            },  # must be ignored
         )
     )
     product = api.get_product("CHR-001")
@@ -84,8 +94,9 @@ def test_get_product_ignores_extra_image_field(api):
 @respx.mock
 def test_get_balance_sends_api_key(api):
     route = respx.get(f"{BASE}/users/u001").mock(
-        return_value=httpx.Response(200, json={"user_id": "u001", "name": "Asha",
-                                               "balance": 2500.0})
+        return_value=httpx.Response(
+            200, json={"user_id": "u001", "name": "Asha", "balance": 2500.0}
+        )
     )
     balance = api.get_balance()
     assert balance.balance == 2500.0
@@ -97,8 +108,12 @@ def test_place_order_posts_body_and_returns_result(api):
     route = respx.post(f"{BASE}/orders").mock(
         return_value=httpx.Response(
             200,
-            json={"order_id": "o123", "status": "success", "total_price": 399.0,
-                  "remaining_balance": 2101.0},
+            json={
+                "order_id": "o123",
+                "status": "success",
+                "total_price": 399.0,
+                "remaining_balance": 2101.0,
+            },
         )
     )
     result = api.place_order("CHR-001", quantity=1)
@@ -154,9 +169,7 @@ def test_rate_limit_carries_retry_after(api):
 
 @respx.mock
 def test_error_detail_falls_back_to_text_when_not_json(api):
-    respx.get(f"{BASE}/users/u001").mock(
-        return_value=httpx.Response(404, text="plain not found")
-    )
+    respx.get(f"{BASE}/users/u001").mock(return_value=httpx.Response(404, text="plain not found"))
     with pytest.raises(fa.NotFoundError) as info:
         api.get_balance()
     assert info.value.detail == "plain not found"

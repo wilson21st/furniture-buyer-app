@@ -52,3 +52,7 @@ playwright-report/
 !docs/**/*.pdf
 invoice*.pdf
 chair*.jpg
+.capture/
+# Root-level demo screenshots (canonical copies live in docs/screenshots/)
+/review-*.png
+/lf-*.png
