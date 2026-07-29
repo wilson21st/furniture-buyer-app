@@ -1,0 +1,144 @@
+"""FastAPI app: routes + templates for the Level 1 buyer app.
+
+Kept deliberately small and server-rendered. Later steps extend this file (real
+API in Step 5, agent chat in Step 6) but the Level 1 surface stays intact.
+"""
+
+from __future__ import annotations
+
+from contextlib import asynccontextmanager
+from pathlib import Path
+
+from fastapi import Depends, FastAPI, Form, Request
+from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.templating import Jinja2Templates
+from sqlmodel import Session
+from starlette.middleware.sessions import SessionMiddleware
+
+from app import services
+from app.auth import current_user_id, login_session, logout_session
+from app.config import get_settings
+from app.db import get_engine, get_session, init_db
+
+TEMPLATES = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    init_db()
+    with Session(get_engine()) as session:
+        services.bootstrap_demo(session)
+    yield
+
+
+def create_app() -> FastAPI:
+    app = FastAPI(title="Furniture Buyer App", lifespan=lifespan)
+    app.add_middleware(SessionMiddleware, secret_key=get_settings().app_secret_key)
+    register_routes(app)
+    return app
+
+
+def _flash(request: Request, message: str, level: str = "info") -> None:
+    request.session["flash"] = {"message": message, "level": level}
+
+
+def _pop_flash(request: Request) -> dict | None:
+    return request.session.pop("flash", None)
+
+
+def _require_user(request: Request, session: Session):
+    user_id = current_user_id(request.session)
+    if not user_id:
+        return None
+    return session.get(services.Customer, user_id)
+
+
+def register_routes(app: FastAPI) -> None:
+    @app.get("/health")
+    def health() -> dict:
+        return {"status": "ok"}
+
+    @app.get("/", response_class=HTMLResponse)
+    def home(request: Request, session: Session = Depends(get_session)):
+        user = _require_user(request, session)
+        products = services.list_products(session, limit=100)
+        return TEMPLATES.TemplateResponse(
+            request,
+            "home.html",
+            {"products": products, "user": user, "flash": _pop_flash(request)},
+        )
+
+    @app.get("/login", response_class=HTMLResponse)
+    def login_form(request: Request):
+        return TEMPLATES.TemplateResponse(
+            request, "login.html", {"flash": _pop_flash(request)}
+        )
+
+    @app.post("/login")
+    def login_submit(
+        request: Request,
+        user_id: str = Form(...),
+        password: str = Form(...),
+        session: Session = Depends(get_session),
+    ):
+        user = services.authenticate(session, user_id, password)
+        if user is None:
+            _flash(request, "Wrong user id or password.", "error")
+            return RedirectResponse("/login", status_code=303)
+        login_session(request.session, user.user_id)
+        _flash(request, f"Welcome back, {user.name}.", "info")
+        return RedirectResponse("/", status_code=303)
+
+    @app.post("/logout")
+    def logout(request: Request):
+        logout_session(request.session)
+        return RedirectResponse("/", status_code=303)
+
+    @app.post("/buy/{item_id}")
+    def buy(
+        request: Request,
+        item_id: str,
+        quantity: int = Form(1),
+        session: Session = Depends(get_session),
+    ):
+        user = _require_user(request, session)
+        if user is None:
+            _flash(request, "Please log in to place an order.", "error")
+            return RedirectResponse("/login", status_code=303)
+        try:
+            order = services.place_order(session, user, item_id, quantity)
+        except services.InsufficientBalanceError as exc:
+            _flash(request, str(exc), "error")
+            return RedirectResponse("/", status_code=303)
+        except services.ProductNotFoundError as exc:
+            _flash(request, str(exc), "error")
+            return RedirectResponse("/", status_code=303)
+        _flash(
+            request,
+            f"Ordered {order.item_id} for ${order.total_price:.2f}. "
+            f"Balance now ${user.local_balance:.2f}.",
+            "info",
+        )
+        return RedirectResponse("/orders", status_code=303)
+
+    @app.get("/orders", response_class=HTMLResponse)
+    def orders(request: Request, session: Session = Depends(get_session)):
+        user = _require_user(request, session)
+        if user is None:
+            _flash(request, "Please log in to see your orders.", "error")
+            return RedirectResponse("/login", status_code=303)
+        history = services.order_history(session, user.user_id)
+        spent = services.total_spent(session, user.user_id)
+        return TEMPLATES.TemplateResponse(
+            request,
+            "orders.html",
+            {
+                "user": user,
+                "orders": history,
+                "total_spent": spent,
+                "flash": _pop_flash(request),
+            },
+        )
+
+
+app = create_app()

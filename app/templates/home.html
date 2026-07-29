@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Catalogue · Furniture Buyer{% endblock %}
+{% block content %}
+  <h1>Catalogue</h1>
+  {% if not user %}
+    <p><a href="/login">Log in</a> to place an order.</p>
+  {% endif %}
+  <div class="grid">
+    {% for product in products %}
+      <div class="card">
+        <div>{{ product.product_name }}</div>
+        <div class="price">${{ "%.2f"|format(product.price) }}</div>
+        <div><small>{{ product.category }}{% if product.colours %} · {{ product.colours|join(", ") }}{% endif %}</small></div>
+        {% if user %}
+          <form method="post" action="/buy/{{ product.item_id }}">
+            <input type="hidden" name="quantity" value="1">
+            <button type="submit">Buy</button>
+          </form>
+        {% endif %}
+      </div>
+    {% else %}
+      <p>No products yet.</p>
+    {% endfor %}
+  </div>
+{% endblock %}

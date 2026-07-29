@@ -35,3 +35,17 @@ def initialized_db():
     """Create all tables and return the engine."""
     db.init_db()
     return db.get_engine()
+
+
+@pytest.fixture
+def client(initialized_db):
+    """A TestClient with the demo user + placeholder catalogue seeded."""
+    from fastapi.testclient import TestClient
+    from sqlmodel import Session
+
+    from app import services
+    from app.main import create_app
+
+    with Session(initialized_db) as session:
+        services.bootstrap_demo(session)
+    return TestClient(create_app())

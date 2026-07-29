@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}My orders · Furniture Buyer{% endblock %}
+{% block content %}
+  <h1>My orders</h1>
+  <p>Total spent: <strong>${{ "%.2f"|format(total_spent) }}</strong> ·
+     Balance: <strong>${{ "%.2f"|format(user.local_balance) }}</strong></p>
+  <table>
+    <thead>
+      <tr><th>When</th><th>Item</th><th>Qty</th><th>Total</th><th>Status</th></tr>
+    </thead>
+    <tbody>
+      {% for order in orders %}
+        <tr>
+          <td>{{ order.created_at.strftime("%Y-%m-%d %H:%M") }}</td>
+          <td>{{ order.item_id }}</td>
+          <td>{{ order.quantity }}</td>
+          <td>${{ "%.2f"|format(order.total_price) }}</td>
+          <td>{{ order.status }}</td>
+        </tr>
+      {% else %}
+        <tr><td colspan="5">No orders yet — <a href="/">browse the catalogue</a>.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endblock %}

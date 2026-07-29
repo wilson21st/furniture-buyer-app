@@ -65,6 +65,10 @@ target-version = "py313"
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
 
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI dependency-injection idiom: these calls in argument defaults are correct.
+extend-immutable-calls = ["fastapi.Depends", "fastapi.Form", "fastapi.Query", "fastapi.Path"]
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
