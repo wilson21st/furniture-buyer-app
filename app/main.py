@@ -13,6 +13,7 @@ from pathlib import Path
 
 from fastapi import Depends, FastAPI, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlmodel import Session
 from starlette.middleware.sessions import SessionMiddleware
@@ -41,7 +42,32 @@ CHAT_STORE: dict[str, ChatState] = {}
 def reset_chat_store() -> None:
     CHAT_STORE.clear()
 
+_STATIC_DIR = Path(__file__).parent / "static"
 TEMPLATES = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
+
+# Named colours the catalogue/API use → hex, for product swatches in the UI.
+_COLOUR_HEX = {
+    "mustard": "#d9a441", "oak": "#c8a06a", "walnut": "#5b3a29", "white": "#eceef1",
+    "black": "#222834", "teal": "#1f7a8c", "blue": "#3b82f6", "grey": "#9aa0a6",
+    "gray": "#9aa0a6", "green": "#44aa88", "red": "#e05a4a", "pink": "#e88fb0",
+    "natural": "#d8c3a5", "beige": "#e3d9c6", "navy": "#22314f", "cream": "#efe7d6",
+}
+
+
+def colour_hex(name: str | None) -> str:
+    return _COLOUR_HEX.get((name or "").strip().lower(), "#c7cbd1")
+
+
+def initials(name: str | None) -> str:
+    parts = (name or "").split()
+    if not parts:
+        return "?"
+    letters = parts[0][:1] + (parts[1][:1] if len(parts) > 1 else "")
+    return letters.upper()
+
+
+TEMPLATES.env.globals["colour_hex"] = colour_hex
+TEMPLATES.env.globals["initials"] = initials
 
 
 def get_api():
@@ -67,6 +93,7 @@ async def lifespan(app: FastAPI):
 def create_app() -> FastAPI:
     app = FastAPI(title="Furniture Buyer App", lifespan=lifespan)
     app.add_middleware(SessionMiddleware, secret_key=get_settings().app_secret_key)
+    app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
     register_routes(app)
     return app
 

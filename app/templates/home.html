@@ -1,25 +1,46 @@
 {% extends "base.html" %}
-{% block title %}Catalogue · Furniture Buyer{% endblock %}
+{% block title %}Catalogue · Furnish{% endblock %}
 {% block content %}
-  <h1>Catalogue</h1>
-  {% if not user %}
-    <p><a href="/login">Log in</a> to place an order.</p>
-  {% endif %}
+  <div class="page-head">
+    <h1>Catalogue</h1>
+    <p class="sub">
+      {% if user %}Browse the collection and place an order against your balance.
+      {% else %}Browse the collection — <a href="/login">log in</a> to place an order.{% endif %}
+    </p>
+  </div>
+
   <div class="grid">
     {% for product in products %}
-      <div class="card">
-        <div>{{ product.product_name }}</div>
-        <div class="price">${{ "%.2f"|format(product.price) }}</div>
-        <div><small>{{ product.category }}{% if product.colours %} · {{ product.colours|join(", ") }}{% endif %}</small></div>
-        {% if user %}
-          <form method="post" action="/buy/{{ product.item_id }}">
-            <input type="hidden" name="quantity" value="1">
-            <button type="submit">Buy</button>
-          </form>
-        {% endif %}
-      </div>
+      {% set base = colour_hex(product.colours[0]) if product.colours else '#c7cbd1' %}
+      <article class="product-card">
+        <div class="product-media" style="background:linear-gradient(135deg,{{ base }}2e,{{ base }}9c)">
+          <span class="badge">{{ product.category or "Furniture" }}</span>
+          {% if product.colours %}
+            <span class="swatches">
+              {% for c in product.colours %}
+                <span class="swatch" title="{{ c }}" style="background:{{ colour_hex(c) }}"></span>
+              {% endfor %}
+            </span>
+          {% endif %}
+        </div>
+        <div class="product-body">
+          <h3 class="product-name">{{ product.product_name }}</h3>
+          {% if product.colours %}
+            <div class="product-colours">{{ product.colours|join(", ") }}</div>
+          {% endif %}
+          <div class="product-foot">
+            <span class="price">${{ "%.2f"|format(product.price) }}</span>
+            {% if user %}
+              <form method="post" action="/buy/{{ product.item_id }}">
+                <input type="hidden" name="quantity" value="1">
+                <button class="btn btn-primary btn-sm" type="submit">Buy</button>
+              </form>
+            {% endif %}
+          </div>
+        </div>
+      </article>
     {% else %}
-      <p>No products yet.</p>
+      <div class="empty">No products yet.</div>
     {% endfor %}
   </div>
 {% endblock %}

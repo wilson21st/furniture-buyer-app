@@ -1,19 +1,24 @@
 {% extends "base.html" %}
-{% block title %}Log in · Furniture Buyer{% endblock %}
+{% block title %}Log in · Furnish{% endblock %}
 {% block content %}
-  <h1>Log in</h1>
-  <form method="post" action="/login">
-    <p>
-      <label>User ID<br>
-        <input name="user_id" value="u001" autocomplete="username" required>
-      </label>
-    </p>
-    <p>
-      <label>Password<br>
-        <input name="password" type="password" autocomplete="current-password" required>
-      </label>
-    </p>
-    <button type="submit">Log in</button>
-  </form>
-  <p><small>Demo user: <code>u001</code> / <code>demo1234</code></small></p>
+  <div class="auth-wrap">
+    <div class="auth-card">
+      <h1>Log in</h1>
+      <p class="sub">Welcome back — sign in to shop and see your orders.</p>
+      <form method="post" action="/login">
+        <div class="field">
+          <label for="user_id">User ID</label>
+          <input class="input" id="user_id" name="user_id" value="u001"
+                 autocomplete="username" required>
+        </div>
+        <div class="field">
+          <label for="password">Password</label>
+          <input class="input" id="password" name="password" type="password"
+                 autocomplete="current-password" required>
+        </div>
+        <button class="btn btn-primary btn-block" type="submit">Log in</button>
+      </form>
+      <p class="hint">Demo account — <code>u001</code> / <code>demo1234</code></p>
+    </div>
+  </div>
 {% endblock %}

@@ -9,6 +9,8 @@ A buyer's web app for a furniture shop, built across the event's Day-1 levels:
 3. **Level 3** — an AI agent: type "find me a mustard chair under $500" and it does it.
 4. **Level 4** (optional) — a vector-RAG Q&A bot over the catalogue.
 
+![Catalogue](docs/screenshots/home.png)
+
 It is built with three engineering requirements woven through every step:
 
 - **Version control** — public GitHub repo, one commit + tag per lab step.

@@ -1,25 +1,48 @@
 {% extends "base.html" %}
-{% block title %}My orders · Furniture Buyer{% endblock %}
+{% block title %}My orders · Furnish{% endblock %}
 {% block content %}
-  <h1>My orders</h1>
-  <p>Total spent: <strong>${{ "%.2f"|format(total_spent) }}</strong> ·
-     Balance: <strong>${{ "%.2f"|format(balance or 0) }}</strong></p>
-  <table>
-    <thead>
-      <tr><th>When</th><th>Item</th><th>Qty</th><th>Total</th><th>Status</th></tr>
-    </thead>
-    <tbody>
-      {% for order in orders %}
-        <tr>
-          <td>{% if order.created_at %}{{ order.created_at.strftime("%Y-%m-%d %H:%M") }}{% else %}—{% endif %}</td>
-          <td>{{ order.item_id }}</td>
-          <td>{{ order.quantity }}</td>
-          <td>${{ "%.2f"|format(order.total_price) }}</td>
-          <td>{{ order.status }}</td>
-        </tr>
-      {% else %}
-        <tr><td colspan="5">No orders yet — <a href="/">browse the catalogue</a>.</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
+  <div class="page-head">
+    <h1>My orders</h1>
+    <p class="sub">Your purchase history and remaining balance.</p>
+  </div>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="label">Total spent</div>
+      <div class="value mono">${{ "%.2f"|format(total_spent) }}</div>
+    </div>
+    <div class="stat">
+      <div class="label">Balance</div>
+      <div class="value mono">${{ "%.2f"|format(balance or 0) }}</div>
+    </div>
+    <div class="stat">
+      <div class="label">Orders</div>
+      <div class="value mono">{{ orders|length }}</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <table class="table">
+      <thead>
+        <tr><th>When</th><th>Item</th><th>Qty</th><th>Total</th><th>Status</th></tr>
+      </thead>
+      <tbody>
+        {% for order in orders %}
+          <tr>
+            <td>{% if order.created_at %}{{ order.created_at.strftime("%Y-%m-%d %H:%M") }}{% else %}—{% endif %}</td>
+            <td class="mono">{{ order.item_id }}</td>
+            <td class="mono">{{ order.quantity }}</td>
+            <td class="mono">${{ "%.2f"|format(order.total_price) }}</td>
+            <td><span class="pill">{{ order.status }}</span></td>
+          </tr>
+        {% else %}
+          <tr><td colspan="5">
+            <div class="empty" style="border:none;padding:28px">
+              No orders yet — <a href="/">browse the catalogue</a>.
+            </div>
+          </td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 {% endblock %}
