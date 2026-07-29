@@ -51,6 +51,9 @@ uv run pytest -m e2e       # Playwright end-to-end (needs a running server)
 uv run pytest -m live      # hits real external services (needs creds)
 ```
 
+Full test report — inventory, coverage, and page/CLI/Langfuse screenshots — is in
+[`docs/TESTING.md`](docs/TESTING.md).
+
 ## Deploy
 Containerised (`Dockerfile`). Recommended host: **Fly.io** (`fly.toml`, persistent SQLite
 volume) with a GitHub Actions workflow that deploys after CI passes. Full options — Fly,
