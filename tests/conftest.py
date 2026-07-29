@@ -28,6 +28,11 @@ def isolate_env(monkeypatch, tmp_path):
     get_settings.cache_clear()
     db.reset_engine()
     observability.set_client(None)
+    from app import agent as agent_mod
+    from app.main import reset_chat_store
+
+    reset_chat_store()
+    agent_mod.set_llm_factory(agent_mod.default_llm)
 
 
 @pytest.fixture

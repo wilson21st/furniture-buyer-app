@@ -23,6 +23,7 @@
   <nav>
     <a href="/"><strong>🛋️ Furniture Buyer</strong></a>
     <a href="/orders">My orders</a>
+    <a href="/chat">Assistant</a>
     <span class="spacer"></span>
     {% if user %}
       <span>{{ user.name }} · ${{ "%.2f"|format(balance or 0) }}</span>

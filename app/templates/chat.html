@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Assistant · Furniture Buyer{% endblock %}
+{% block content %}
+  <h1>Shopping assistant</h1>
+  <p><small>Try: "find me a chair under $500", "what's my balance?", "buy the first one".</small></p>
+
+  <div style="border:1px solid #e2e2e2;border-radius:8px;padding:1rem;min-height:120px">
+    {% for msg in messages %}
+      <p><strong>{{ "You" if msg.role == "user" else "Assistant" }}:</strong>
+         {{ msg.text }}</p>
+    {% else %}
+      <p><em>No messages yet — ask for something below.</em></p>
+    {% endfor %}
+  </div>
+
+  {% if pending %}
+    <div class="flash info">
+      <p>Confirm purchase: <strong>{{ pending.quantity }} × {{ pending.product_name }}</strong>
+         for <strong>${{ "%.2f"|format(pending.total) }}</strong>?</p>
+      <form method="post" action="/chat/confirm" style="display:inline">
+        <button type="submit">Confirm &amp; buy</button>
+      </form>
+      <form method="post" action="/chat/cancel" style="display:inline">
+        <button type="submit">Cancel</button>
+      </form>
+    </div>
+  {% endif %}
+
+  <form method="post" action="/chat" style="margin-top:1rem;display:flex;gap:.5rem">
+    <input name="message" placeholder="Ask for something…" style="flex:1" required>
+    <button type="submit">Send</button>
+  </form>
+{% endblock %}

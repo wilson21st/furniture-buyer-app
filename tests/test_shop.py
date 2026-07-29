@@ -103,6 +103,28 @@ def test_api_errors_map_to_friendly_shoperror(api, session, user, status, header
 
 
 @respx.mock
+def test_api_get_product_view_found_and_missing(api, session, user):
+    respx.get(f"{BASE}/catalogue/API-1").mock(
+        return_value=httpx.Response(
+            200, json={"item_id": "API-1", "product_name": "Cloud Sofa", "price": 800.0,
+                       "category": "Sofas", "colours": ["grey"]}
+        )
+    )
+    view = shop.get_product_view(api, session, "API-1")
+    assert view.product_name == "Cloud Sofa"
+
+    respx.get(f"{BASE}/catalogue/GONE").mock(
+        return_value=httpx.Response(404, json={"detail": "no"})
+    )
+    assert shop.get_product_view(api, session, "GONE") is None
+
+
+def test_local_get_product_view_found_and_missing(session, user):
+    assert shop.get_product_view(None, session, "CHR-001").price == 399.0
+    assert shop.get_product_view(None, session, "NOPE") is None
+
+
+@respx.mock
 def test_api_order_history(api, session, user):
     respx.get(f"{BASE}/orders/u001").mock(
         return_value=httpx.Response(

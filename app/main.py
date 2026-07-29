@@ -6,7 +6,9 @@ API in Step 5, agent chat in Step 6) but the Level 1 surface stays intact.
 
 from __future__ import annotations
 
+import uuid
 from contextlib import asynccontextmanager
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, Form, Request
@@ -15,11 +17,29 @@ from fastapi.templating import Jinja2Templates
 from sqlmodel import Session
 from starlette.middleware.sessions import SessionMiddleware
 
+from app import agent as agent_mod
 from app import services, shop
 from app.auth import current_user_id, login_session, logout_session
 from app.config import get_settings
 from app.db import get_engine, get_session, init_db
 from app.furniture_api import FurnitureAPI
+from app.tools import PendingOrder, ToolContext
+
+
+@dataclass
+class ChatState:
+    history: list[dict] = field(default_factory=list)
+    display: list[dict] = field(default_factory=list)  # {"role", "text"}
+    pending: PendingOrder | None = None
+
+
+# Server-side chat store keyed by a per-session id (keeps big tool outputs out of
+# the signed cookie). Fine for a single-process demo.
+CHAT_STORE: dict[str, ChatState] = {}
+
+
+def reset_chat_store() -> None:
+    CHAT_STORE.clear()
 
 TEMPLATES = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 
@@ -165,6 +185,99 @@ def register_routes(app: FastAPI) -> None:
                 "flash": _pop_flash(request),
             },
         )
+
+    # --- Step 6: agent chat -------------------------------------------------
+    def _chat_state(request: Request) -> ChatState:
+        sid = request.session.get("chat_sid")
+        if not sid:
+            sid = uuid.uuid4().hex
+            request.session["chat_sid"] = sid
+        return CHAT_STORE.setdefault(sid, ChatState())
+
+    @app.get("/chat", response_class=HTMLResponse)
+    def chat_page(
+        request: Request,
+        session: Session = Depends(get_session),
+        api: FurnitureAPI | None = Depends(get_api),
+    ):
+        user = _require_user(request, session)
+        if user is None:
+            _flash(request, "Please log in to use the assistant.", "error")
+            return RedirectResponse("/login", status_code=303)
+        state = _chat_state(request)
+        return TEMPLATES.TemplateResponse(
+            request,
+            "chat.html",
+            {
+                "user": user,
+                "balance": shop.get_balance(api, user),
+                "messages": state.display,
+                "pending": state.pending,
+                "flash": _pop_flash(request),
+            },
+        )
+
+    @app.post("/chat")
+    def chat_send(
+        request: Request,
+        message: str = Form(...),
+        session: Session = Depends(get_session),
+        api: FurnitureAPI | None = Depends(get_api),
+    ):
+        user = _require_user(request, session)
+        if user is None:
+            return RedirectResponse("/login", status_code=303)
+        state = _chat_state(request)
+        ctx = ToolContext(api=api, session=session, user=user)
+        reply, new_history = agent_mod.Agent(ctx).respond(message, state.history)
+        state.history = new_history
+        state.display.append({"role": "user", "text": message})
+        state.display.append({"role": "assistant", "text": reply.text})
+        state.pending = reply.pending_order
+        return RedirectResponse("/chat", status_code=303)
+
+    @app.post("/chat/confirm")
+    def chat_confirm(
+        request: Request,
+        session: Session = Depends(get_session),
+        api: FurnitureAPI | None = Depends(get_api),
+    ):
+        user = _require_user(request, session)
+        if user is None:
+            return RedirectResponse("/login", status_code=303)
+        state = _chat_state(request)
+        if state.pending is not None:
+            ctx = ToolContext(api=api, session=session, user=user)
+            pending = state.pending
+            state.pending = None
+            try:
+                outcome = agent_mod.execute_confirmed_order(ctx, pending)
+                state.display.append(
+                    {
+                        "role": "assistant",
+                        "text": (
+                            f"Done — ordered {pending.quantity} x {pending.product_name} "
+                            f"for ${outcome.total_price:.2f}. "
+                            f"Balance now ${outcome.remaining_balance:.2f}."
+                        ),
+                    }
+                )
+            except shop.ShopError as exc:
+                state.display.append({"role": "assistant", "text": str(exc)})
+        return RedirectResponse("/chat", status_code=303)
+
+    @app.post("/chat/cancel")
+    def chat_cancel(request: Request, session: Session = Depends(get_session)):
+        user = _require_user(request, session)
+        if user is None:
+            return RedirectResponse("/login", status_code=303)
+        state = _chat_state(request)
+        if state.pending is not None:
+            state.pending = None
+            state.display.append(
+                {"role": "assistant", "text": "No problem — I won't place that order."}
+            )
+        return RedirectResponse("/chat", status_code=303)
 
 
 app = create_app()

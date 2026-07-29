@@ -71,6 +71,23 @@ def get_balance(api: fa.FurnitureAPI | None, user: Customer) -> float:
     return user.local_balance
 
 
+def get_product_view(
+    api: fa.FurnitureAPI | None, session: Session, item_id: str
+) -> ProductView | None:
+    if api is not None:
+        try:
+            p = api.get_product(item_id)
+        except fa.ApiError:
+            return None
+        return ProductView(p.item_id, p.product_name, p.price, p.category, p.colours)
+    local = services.get_product(session, item_id)
+    if local is None:
+        return None
+    return ProductView(
+        local.item_id, local.product_name, local.price, local.category, local.colours
+    )
+
+
 def _friendly(exc: Exception) -> str:
     if isinstance(exc, (fa.InsufficientBalanceError, services.InsufficientBalanceError)):
         return "Insufficient balance — this order costs more than you have left."
