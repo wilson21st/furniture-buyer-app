@@ -170,7 +170,11 @@ def run() -> Recorder:
     db.reset_engine()
     db.init_db()
     recorder = Recorder()
-    observability.set_client(recorder)
+    real = get_settings().langfuse_enabled
+    if not real:
+        # In-process capture (default). When LANGFUSE_ENABLED=true we instead let the
+        # app build the real Langfuse client so spans stream to the running backend.
+        observability.set_client(recorder)
 
     with respx.mock(assert_all_called=False) as router:
         _catalogue_mocks(router)
@@ -222,7 +226,10 @@ def run() -> Recorder:
             )
         api.close()
 
-    observability.set_client(None)
+    if real:
+        observability.flush()
+    else:
+        observability.set_client(None)
     return recorder
 
 
@@ -280,6 +287,10 @@ def print_tree(span: RecSpan, depth: int = 0) -> tuple[int, int, int]:
 
 def main() -> None:
     recorder = run()
+    if get_settings().langfuse_enabled:
+        print("Ran scenario with LANGFUSE_ENABLED=true — spans/generations flushed to "
+              f"{get_settings().langfuse_host}. Query the API to inspect them.")
+        return
     print("\n=== OBSERVABILITY TRACE TREE (in-process recorder) ===\n")
     total_spans = total_api = total_gens = 0
     for root in recorder.roots:

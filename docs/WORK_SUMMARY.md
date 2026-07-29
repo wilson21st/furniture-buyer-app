@@ -163,12 +163,37 @@ What this demonstrates as observability (vs. logging):
 - **Timings** — per-span durations for latency analysis.
 - **LLM generations** — model + output recorded per turn (audit trail of every model call).
 
-### Production backend (Langfuse)
-`docker-compose.langfuse.yml` self-hosts Langfuse with **headless key provisioning** (no UI
-signup needed). Start it, set `LANGFUSE_ENABLED=true` + the keys in `.env`, and the exact same
-spans/generations above stream to `http://localhost:3000` for the demo. In this environment
-the image pull was blocked, so the in-process recorder above is the captured artifact; the
-stack is configured and starts with one command where Docker registry access is available.
+### Production backend (Langfuse) — verified live
+`docker-compose.langfuse.yml` self-hosts Langfuse (web + worker + postgres + clickhouse +
+redis + minio) with **headless key provisioning** (no UI signup) and a **single-node
+ClickHouse Keeper** config so the v3/v4 `ON CLUSTER` migrations succeed. A one-shot
+`minio-init` creates the event bucket ingestion requires.
+
+This was **run end to end in this session**: the stack came up healthy, `auth_check()`
+passed, and running the harness with `LANGFUSE_ENABLED=true` streamed the app's real spans
+to `http://localhost:3000`. Querying the public API confirmed ingestion:
+
+```
+GET /api/public/traces  →  6 traces
+  scenario.level2_api_client   (5 observations)
+  agent.respond                (8 observations)   # tool + api spans + 3 generations
+  agent.confirm_order          (2 observations)
+  rag.retrieve                 (1 observation)
+  rag.answer                   (1 observation)
+```
+
+`app/observability.py` was adapted to the Langfuse **v4** OTEL API
+(`start_as_current_observation` for spans, `start_observation(as_type="generation")` for
+generations) while keeping the v2/v3 and no-op paths — so the same `observability.span(...)`
+calls throughout the app light up in Langfuse when enabled, and are inert (no network) in
+tests. To reproduce:
+
+```bash
+docker compose -f docker-compose.langfuse.yml up -d      # http://localhost:3000
+LANGFUSE_ENABLED=true LANGFUSE_PUBLIC_KEY=pk-lf-hackathon-public \
+  LANGFUSE_SECRET_KEY=sk-lf-hackathon-secret \
+  uv run python -m scripts.observability_e2e
+```
 
 ---
 

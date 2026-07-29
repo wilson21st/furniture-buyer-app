@@ -43,6 +43,50 @@ class LegacyClient:
         return FakeSpan()
 
 
+class V4Span:
+    """Mimics a Langfuse v4 observation: context-managed, with update()/end()."""
+
+    def __init__(self, recorder, name):
+        self.recorder = recorder
+        self.name = name
+        self.metadata: dict = {}
+
+    def update(self, **kwargs):
+        self.metadata.update(kwargs.get("metadata") or {})
+        return self
+
+    def end(self):
+        self.recorder.ended.append(self.name)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        self.end()
+
+
+class V4Client:
+    """Mimics the Langfuse v4 OTEL client API surface used by observability.py."""
+
+    def __init__(self):
+        self.ended: list[str] = []
+        self.generations: list[dict] = []
+        self.flushed = False
+
+    def start_as_current_observation(self, as_type, name, **kwargs):
+        return V4Span(self, name)
+
+    def start_observation(self, as_type, name, **kwargs):
+        self.generations.append({"as_type": as_type, "name": name, **kwargs})
+        return V4Span(self, name)
+
+    def update_current_generation(self, **kwargs):
+        pass
+
+    def flush(self):
+        self.flushed = True
+
+
 # --- Disabled path ---------------------------------------------------------
 def test_get_client_none_when_disabled():
     assert obs.get_client() is None
@@ -134,6 +178,27 @@ def test_get_client_returns_injected():
     client = FakeClient()
     obs.set_client(client)
     assert obs.get_client() is client
+
+
+# --- Langfuse v4 (OTEL) path -----------------------------------------------
+def test_span_v4_uses_current_observation_and_ends():
+    client = V4Client()
+    obs.set_client(client)
+    with obs.span("agent-turn", user="u001") as handle:
+        assert isinstance(handle, V4Span)
+        assert handle.metadata == {"user": "u001"}
+    assert client.ended == ["agent-turn"]
+
+
+def test_record_generation_v4_starts_generation_observation():
+    client = V4Client()
+    obs.set_client(client)
+    result = obs.record_generation(
+        name="chat", model="claude", input="hi", output="hello"
+    )
+    assert isinstance(result, V4Span)
+    assert client.generations[0]["as_type"] == "generation"
+    assert client.generations[0]["model"] == "claude"
 
 
 def test_enabled_setting_reads_from_env(monkeypatch):

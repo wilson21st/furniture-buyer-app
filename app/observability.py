@@ -61,8 +61,8 @@ def get_client() -> Any | None:
     return _client
 
 
-def _start_span(client: Any, name: str, attributes: dict) -> Any:
-    """Forward to whichever span-creation method the installed SDK exposes."""
+def _start_span_legacy(client: Any, name: str, attributes: dict) -> Any:
+    """Forward to whichever span-creation method a v2/v3 SDK exposes."""
     for method in ("start_span", "span"):
         fn = getattr(client, method, None)
         if callable(fn):
@@ -76,14 +76,34 @@ def _end_span(handle: Any) -> None:
         end()
 
 
+def _safe_update(handle: Any, attributes: dict) -> None:
+    update = getattr(handle, "update", None)
+    if callable(update):
+        try:
+            update(metadata=attributes)
+        except Exception:  # noqa: BLE001 - never let tracing break the app
+            pass
+
+
 @contextmanager
 def span(name: str, **attributes: Any) -> Iterator[Any]:
-    """Context manager creating a Langfuse span (no-op when disabled)."""
+    """Context manager creating a Langfuse span (no-op when disabled).
+
+    Supports Langfuse v4 (OTEL: ``start_as_current_observation`` — proper nesting)
+    and falls back to v2/v3 span methods, then to a no-op.
+    """
     client = get_client()
     if client is None:
         yield _NoopSpan()
         return
-    handle = _start_span(client, name, attributes)
+    start_current = getattr(client, "start_as_current_observation", None)
+    if callable(start_current):  # Langfuse v4
+        with start_current(as_type="span", name=name) as handle:
+            if attributes:
+                _safe_update(handle, attributes)
+            yield handle
+        return
+    handle = _start_span_legacy(client, name, attributes)
     try:
         yield handle
     finally:
@@ -103,6 +123,13 @@ def record_generation(
     client = get_client()
     if client is None:
         return None
+    start_obs = getattr(client, "start_observation", None)
+    if callable(start_obs) and hasattr(client, "update_current_generation"):  # v4
+        observation = start_obs(
+            as_type="generation", name=name, model=model, input=input, output=output
+        )
+        _end_span(observation)
+        return observation
     fn = getattr(client, "generation", None) or getattr(client, "create_generation", None)
     if not callable(fn):
         return None
