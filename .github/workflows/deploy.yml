@@ -14,8 +14,19 @@ jobs:
     concurrency: deploy-main
     steps:
       - uses: actions/checkout@v4
+      - name: Check for Fly token
+        id: guard
+        run: |
+          if [ -z "${{ secrets.FLY_API_TOKEN }}" ]; then
+            echo "FLY_API_TOKEN not set — skipping deploy (see docs/deployment.md)."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
       - uses: superfly/flyctl-actions/setup-flyctl@master
+        if: steps.guard.outputs.ready == 'true'
       - name: Deploy to Fly.io
+        if: steps.guard.outputs.ready == 'true'
         run: flyctl deploy --remote-only
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
