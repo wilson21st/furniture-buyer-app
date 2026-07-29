@@ -1,0 +1,54 @@
+# Secrets — NEVER commit
+.env
+.env.*
+!.env.example
+*.key
+secrets/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.uv/
+
+# Databases / local data
+*.db
+*.sqlite
+*.sqlite3
+data/*.db
+
+# Testing / coverage
+.pytest_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+.ruff_cache/
+.mypy_cache/
+
+# Playwright
+test-results/
+playwright-report/
+.playwright-mcp/
+
+# OS / editor
+.DS_Store
+*.swp
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Langfuse self-host volumes
+.langfuse-data/
+
+# Claude Code generated artefacts (keep hooks/commands/settings, drop runtime)
+.claude/session.log
+.claude/telemetry.env
+
+# Runtime artefacts
+*.pdf
+!docs/**/*.pdf
+invoice*.pdf
+chair*.jpg

@@ -1,0 +1,73 @@
+[project]
+name = "furniture-buyer-app"
+version = "0.1.0"
+description = "Day 1 hackathon buyer app for a furniture shop — web UI, login, DB, external API, and an AI agent, with Langfuse observability."
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "sqlmodel>=0.0.22",
+    "jinja2>=3.1",
+    "python-multipart>=0.0.12",
+    "itsdangerous>=2.2",
+    "passlib[bcrypt]>=1.7",
+    "httpx>=0.27",
+    "pydantic-settings>=2.6",
+    "pymongo>=4.10",
+    "anthropic>=0.40",
+    "langfuse>=2.53",
+    "numpy>=2.1",
+    "pypdf>=5.1",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "pytest-cov>=6.0",
+    "pytest-asyncio>=0.24",
+    "respx>=0.21",
+    "pytest-playwright>=0.5",
+    "ruff>=0.8",
+    "mongomock>=4.2",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# Default run = unit + integration only (fast, deterministic), and it is what the
+# hard 90% coverage gate applies to. e2e/live need a running server or real creds,
+# so they are excluded here and run explicitly: `uv run pytest -m e2e` / `-m live`.
+addopts = "-m 'not e2e and not live' --cov=app --cov-report=term-missing --cov-report=xml --cov-fail-under=90 --strict-markers"
+markers = [
+    "live: tests that hit real external services (deselected by default; run with -m live)",
+    "e2e: end-to-end Playwright tests (require a running server; run with -m e2e)",
+]
+asyncio_mode = "auto"
+
+[tool.coverage.run]
+source = ["app"]
+omit = ["app/__main__.py"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.:",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
