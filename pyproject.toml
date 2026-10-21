@@ -18,7 +18,7 @@ dependencies = [
     "anthropic>=0.40",
     # Pinned to v4.x: app/observability.py targets the v4 OTEL API. A looser floor
     # could pull an untested v2/v3 SDK at install time.
-    "langfuse>=4,<5",
+    "langfuse>=4,<6",
     "numpy>=2.1",
     "pypdf>=5.1",
     "voyageai>=0.3",
